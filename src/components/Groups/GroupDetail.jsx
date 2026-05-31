@@ -43,7 +43,7 @@ export default function GroupDetail() {
     const ids = [...new Set((m ?? []).map((row) => row.user_id))]
     let names = {}
     if (ids.length) {
-      const { data: profs } = await supabase.from('profiles').select('user_id, display_name').in('user_id', ids)
+      const { data: profs } = await supabase.from('member_directory').select('user_id, display_name').in('user_id', ids)
       names = Object.fromEntries((profs ?? []).map((p) => [p.user_id, p.display_name]))
     }
     setMembers((m ?? []).map((row) => ({ ...row, display_name: names[row.user_id] })))

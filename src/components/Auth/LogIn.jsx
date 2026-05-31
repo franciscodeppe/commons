@@ -53,6 +53,9 @@ export default function LogIn() {
           {busy ? 'Logging in…' : 'Log in'}
         </button>
       </form>
+      <p className="mt-4 text-center text-sm">
+        <Link to="/forgot-password" className="text-forest/70 underline hover:text-forest">Forgot your password?</Link>
+      </p>
       <p className="mt-6 text-center text-sm text-forest/70">
         New here?{' '}
         <Link to="/signup" className="font-medium text-forest underline">Create an account</Link>
