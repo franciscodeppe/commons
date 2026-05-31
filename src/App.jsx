@@ -1,24 +1,36 @@
-import { useEffect, useState } from 'react'
-import { supabase } from './supabaseClient'
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { useAuth } from './hooks/useAuth'
+import Navigation from './components/Shared/Navigation'
+import Spinner from './components/Shared/Spinner'
+import SignUp from './components/Auth/SignUp'
+import LogIn from './components/Auth/LogIn'
+import ProfileSetup from './components/Profile/ProfileSetup'
+import GroupList from './components/Groups/GroupList'
+import GroupCreate from './components/Groups/GroupCreate'
+import GroupDetail from './components/Groups/GroupDetail'
+
+function Protected({ children }) {
+  const { user, loading } = useAuth()
+  if (loading) return <Spinner />
+  if (!user) return <Navigate to="/login" replace />
+  return children
+}
 
 export default function App() {
-  const [data, setData] = useState(null)
-  const [error, setError] = useState(null)
-
-  useEffect(() => {
-    ;(async () => {
-      const { data, error } = await supabase.from('test_data').select('*')
-      if (error) setError(error.message)
-      else setData(data)
-    })()
-  }, [])
-
   return (
-    <div style={{ padding: '20px', fontFamily: 'sans-serif' }}>
-      <h1>Commons</h1>
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      {data && <pre>{JSON.stringify(data, null, 2)}</pre>}
-      {!data && !error && <p>Loading...</p>}
+    <div className="min-h-screen bg-cream text-forest">
+      <Navigation />
+      <main>
+        <Routes>
+          <Route path="/login" element={<LogIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/" element={<Protected><GroupList /></Protected>} />
+          <Route path="/onboarding" element={<Protected><ProfileSetup /></Protected>} />
+          <Route path="/groups/new" element={<Protected><GroupCreate /></Protected>} />
+          <Route path="/groups/:id" element={<Protected><GroupDetail /></Protected>} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </main>
     </div>
   )
 }
