@@ -6,6 +6,8 @@ import Spinner from './components/Shared/Spinner'
 import AdminPanel from './components/Admin/AdminPanel'
 import SignUp from './components/Auth/SignUp'
 import LogIn from './components/Auth/LogIn'
+import ForgotPassword from './components/Auth/ForgotPassword'
+import ResetPassword from './components/Auth/ResetPassword'
 import ProfileSetup from './components/Profile/ProfileSetup'
 import ProfileSettings from './components/Profile/ProfileSettings'
 import BrowseMatches from './components/Groups/BrowseMatches'
@@ -36,6 +38,8 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LogIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Protected><BrowseMatches /></Protected>} />
           <Route path="/onboarding" element={<Protected><ProfileSetup /></Protected>} />
           <Route path="/settings" element={<Protected><ProfileSettings /></Protected>} />
