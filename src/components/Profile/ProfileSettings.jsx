@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
 import { supabase } from '../../utils/supabaseClient'
@@ -18,10 +18,13 @@ export default function ProfileSettings() {
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState(null)
   const [error, setError] = useState(null)
+  const seeded = useRef(false)
 
-  // Seed local state once the profile loads.
+  // Seed local state once, the first time the profile loads. Guarded so a
+  // later refetch (e.g. after save) can't wipe in-progress edits.
   useEffect(() => {
-    if (!profile) return
+    if (!profile || seeded.current) return
+    seeded.current = true
     setDisplayName(profile.display_name ?? '')
     setSorts({
       sort_taste: profile.sort_taste ?? {},

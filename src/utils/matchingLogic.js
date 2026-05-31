@@ -162,3 +162,57 @@ export function rankGroups(profile, groups) {
     .map((g) => ({ group: g, ...scoreGroup(profile, g) }))
     .sort((a, b) => b.score - a.score)
 }
+
+// ============================================================
+// CHARACTER DRIFT (Phase 3)
+// A group's lived character drifts from what the organizer declared
+// toward the people who actually attend. "Light" blend, weighted by
+// how many have shown up.
+// ============================================================
+
+// Reverse-map a numeric axis value to its nearest categorical option.
+export function nearestCategory(axisKey, value) {
+  const axis = AXES.find((a) => a.key === axisKey)
+  if (!axis) return null
+  let best = null
+  let bestDist = Infinity
+  for (const [cat, num] of Object.entries(axis.map)) {
+    const d = Math.abs(num - value)
+    if (d < bestDist) {
+      bestDist = d
+      best = cat
+    }
+  }
+  return best
+}
+
+// More attendance → more drift, capped so declared character still anchors.
+export function driftWeight(n) {
+  if (!n || n <= 0) return 0
+  return Math.min(0.6, n / (n + 4))
+}
+
+// attendeeAxes: { energy, drinking, size, commitment, setting } averages.
+// Returns per-axis { key, declared, current, shifted, currentVal, weight }.
+export function driftedCharacter(group, attendeeAxes, n) {
+  const w = driftWeight(n)
+  return AXES.map((axis) => {
+    const declaredCat = group[axis.group]
+    if (declaredCat === null || declaredCat === undefined) return null
+    const declaredVal = axis.map[declaredCat]
+    const att = attendeeAxes?.[axis.key]
+    let currentVal = declaredVal
+    if (w > 0 && att !== null && att !== undefined) {
+      currentVal = declaredVal * (1 - w) + Number(att) * w
+    }
+    const currentCat = nearestCategory(axis.key, currentVal)
+    return {
+      key: axis.key,
+      declared: declaredCat,
+      current: currentCat,
+      shifted: currentCat !== declaredCat,
+      currentVal: round2(currentVal),
+      weight: round2(w),
+    }
+  }).filter(Boolean)
+}
