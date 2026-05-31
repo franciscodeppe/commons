@@ -13,6 +13,7 @@ import ProfileSettings from './components/Profile/ProfileSettings'
 import BrowseMatches from './components/Groups/BrowseMatches'
 import GroupCreate from './components/Groups/GroupCreate'
 import GroupDetail from './components/Groups/GroupDetail'
+import EventCreate from './components/Events/EventCreate'
 
 function Protected({ children }) {
   const { user, loading } = useAuth()
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/settings" element={<Protected><ProfileSettings /></Protected>} />
           <Route path="/groups/new" element={<Protected><GroupCreate /></Protected>} />
           <Route path="/groups/:id" element={<Protected><GroupDetail /></Protected>} />
+          <Route path="/groups/:id/events/new" element={<Protected><EventCreate /></Protected>} />
           <Route path="/admin" element={<AdminOnly><AdminPanel /></AdminOnly>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

@@ -3,12 +3,13 @@ import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../utils/supabaseClient'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
-import { scoreGroup } from '../../utils/matchingLogic'
+import { scoreGroup, driftedCharacter } from '../../utils/matchingLogic'
 import { CATEGORIES, CHARACTER_AXES, DEALBREAKERS } from '../../utils/constants'
 import Spinner from '../Shared/Spinner'
 import JoinRequestFlow from '../Membership/JoinRequestFlow'
 import JoinRequestsPanel from '../Membership/JoinRequestsPanel'
 import MemberList from '../Membership/MemberList'
+import EventList from '../Events/EventList'
 
 const CAT_LABEL = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]))
 const NOT_FOR_LABEL = Object.fromEntries(DEALBREAKERS.map((d) => [d.token, d.label]))
@@ -25,8 +26,19 @@ export default function GroupDetail() {
   const [group, setGroup] = useState(null)
   const [tags, setTags] = useState([])
   const [members, setMembers] = useState([])
+  const [drift, setDrift] = useState([])
+  const [attendanceN, setAttendanceN] = useState(0)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
+
+  // Recompute drift from the people who've actually attended.
+  const loadDrift = useCallback(async (g) => {
+    const { data } = await supabase.rpc('group_attendance_axes', { p_group_id: Number(id) })
+    const row = Array.isArray(data) ? data[0] : data
+    const n = row?.n ?? 0
+    setAttendanceN(n)
+    setDrift(driftedCharacter(g, row ?? {}, n))
+  }, [id])
 
   const load = useCallback(async () => {
     const { data: g } = await supabase.from('groups').select('*').eq('id', id).maybeSingle()
@@ -47,8 +59,9 @@ export default function GroupDetail() {
       names = Object.fromEntries((profs ?? []).map((p) => [p.user_id, p.display_name]))
     }
     setMembers((m ?? []).map((row) => ({ ...row, display_name: names[row.user_id] })))
+    await loadDrift(g)
     setLoading(false)
-  }, [id])
+  }, [id, loadDrift])
 
   useEffect(() => { load() }, [load])
 
@@ -60,9 +73,8 @@ export default function GroupDetail() {
   const pending = members.filter((m) => m.status === 'pending')
   const active = members.filter((m) => m.status === 'member')
 
-  const declared = CHARACTER_AXES
-    .map((a) => ({ label: a.label, value: charLabel(a.key, group[a.key]) }))
-    .filter((x) => x.value)
+  const axisLabel = (axisKey) => CHARACTER_AXES.find((a) => a.key === `char_${axisKey}`)?.label
+  const charRows = drift.filter((d) => group[`char_${d.key}`])
 
   return (
     <div className="mx-auto max-w-2xl px-6 py-10">
@@ -102,14 +114,29 @@ export default function GroupDetail() {
         </div>
       )}
 
-      {declared.length > 0 && (
+      {charRows.length > 0 && (
         <div className="mt-8">
-          <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-forest/60">Character</h2>
+          <div className="mb-2 flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-forest/60">Character</h2>
+            {attendanceN > 0 && (
+              <span className="text-xs text-forest/45">drifting with {attendanceN} attendance{attendanceN === 1 ? '' : 's'}</span>
+            )}
+          </div>
           <dl className="grid grid-cols-2 gap-x-6 gap-y-2">
-            {declared.map((d) => (
-              <div key={d.label} className="flex justify-between border-b border-forest/10 py-1">
-                <dt className="text-forest/60">{d.label}</dt>
-                <dd className="font-medium text-forest">{d.value}</dd>
+            {charRows.map((d) => (
+              <div key={d.key} className="flex items-center justify-between border-b border-forest/10 py-1">
+                <dt className="text-forest/60">{axisLabel(d.key)}</dt>
+                <dd className="font-medium text-forest">
+                  {d.shifted ? (
+                    <span title="declared → where the group actually is now">
+                      <span className="text-forest/40 line-through">{charLabel(`char_${d.key}`, d.declared)}</span>
+                      {' '}
+                      <span className="text-gold">→ {charLabel(`char_${d.key}`, d.current)}</span>
+                    </span>
+                  ) : (
+                    charLabel(`char_${d.key}`, d.declared)
+                  )}
+                </dd>
               </div>
             ))}
           </dl>
@@ -124,6 +151,18 @@ export default function GroupDetail() {
           </div>
         </div>
       )}
+
+      <div className="mt-10">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-forest/60">Events</h2>
+          {isOrganizer && (
+            <Link to={`/groups/${group.id}/events/new`} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest hover:bg-forest hover:text-cream">
+              + Add event
+            </Link>
+          )}
+        </div>
+        <EventList groupId={group.id} isOrganizer={isOrganizer} userId={user.id} onAttendanceChange={() => loadDrift(group)} />
+      </div>
 
       <div className="mt-10">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-forest/60">Members ({active.length})</h2>
