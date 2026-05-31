@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { supabase } from '../../utils/supabaseClient'
 import { useAuth } from '../../hooks/useAuth'
+import { useProfile } from '../../hooks/useProfile'
+import { scoreGroup } from '../../utils/matchingLogic'
 import { CATEGORIES, CHARACTER_AXES, DEALBREAKERS } from '../../utils/constants'
 import Spinner from '../Shared/Spinner'
 import JoinRequestFlow from '../Membership/JoinRequestFlow'
@@ -19,6 +21,7 @@ function charLabel(axisKey, value) {
 export default function GroupDetail() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { profile } = useProfile()
   const [group, setGroup] = useState(null)
   const [tags, setTags] = useState([])
   const [members, setMembers] = useState([])
@@ -72,6 +75,17 @@ export default function GroupDetail() {
       </div>
       <h1 className="text-2xl font-semibold text-forest">{group.name}</h1>
       {group.description && <p className="mt-2 text-forest/80">{group.description}</p>}
+
+      {!isOrganizer && profile?.onboarded && (() => {
+        const { score, tier, gated } = scoreGroup(profile, group)
+        return (
+          <p className="mt-4 text-sm text-forest/70">
+            Your fit: <span className="font-semibold text-forest">{tier.label}</span>
+            {tier.key !== 'poor' && <> · {score}/100</>}
+            {gated && <span className="ml-2 rounded bg-red-50 px-2 py-0.5 text-xs text-red-700">dealbreaker</span>}
+          </p>
+        )
+      })()}
 
       <div className="mt-6">
         {isOrganizer

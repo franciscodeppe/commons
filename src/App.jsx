@@ -5,7 +5,7 @@ import Spinner from './components/Shared/Spinner'
 import SignUp from './components/Auth/SignUp'
 import LogIn from './components/Auth/LogIn'
 import ProfileSetup from './components/Profile/ProfileSetup'
-import GroupList from './components/Groups/GroupList'
+import BrowseMatches from './components/Groups/BrowseMatches'
 import GroupCreate from './components/Groups/GroupCreate'
 import GroupDetail from './components/Groups/GroupDetail'
 
@@ -24,7 +24,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LogIn />} />
           <Route path="/signup" element={<SignUp />} />
-          <Route path="/" element={<Protected><GroupList /></Protected>} />
+          <Route path="/" element={<Protected><BrowseMatches /></Protected>} />
           <Route path="/onboarding" element={<Protected><ProfileSetup /></Protected>} />
           <Route path="/groups/new" element={<Protected><GroupCreate /></Protected>} />
           <Route path="/groups/:id" element={<Protected><GroupDetail /></Protected>} />
