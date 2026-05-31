@@ -13,6 +13,7 @@ import ProfileSettings from './components/Profile/ProfileSettings'
 import BrowseMatches from './components/Groups/BrowseMatches'
 import GroupCreate from './components/Groups/GroupCreate'
 import GroupDetail from './components/Groups/GroupDetail'
+import GroupEdit from './components/Groups/GroupEdit'
 import EventCreate from './components/Events/EventCreate'
 
 function Protected({ children }) {
@@ -46,6 +47,7 @@ export default function App() {
           <Route path="/settings" element={<Protected><ProfileSettings /></Protected>} />
           <Route path="/groups/new" element={<Protected><GroupCreate /></Protected>} />
           <Route path="/groups/:id" element={<Protected><GroupDetail /></Protected>} />
+          <Route path="/groups/:id/edit" element={<Protected><GroupEdit /></Protected>} />
           <Route path="/groups/:id/events/new" element={<Protected><EventCreate /></Protected>} />
           <Route path="/admin" element={<AdminOnly><AdminPanel /></AdminOnly>} />
           <Route path="*" element={<Navigate to="/" replace />} />
