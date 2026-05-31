@@ -101,7 +101,12 @@ export default function GroupDetail() {
 
       <div className="mt-6">
         {isOrganizer
-          ? <span className="rounded-full bg-gold/20 px-3 py-1 text-sm font-medium text-forest">You organize this group</span>
+          ? (
+            <div className="flex items-center gap-3">
+              <span className="rounded-full bg-gold/20 px-3 py-1 text-sm font-medium text-forest">You organize this group</span>
+              <Link to={`/groups/${group.id}/edit`} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest hover:bg-forest hover:text-cream">Edit group</Link>
+            </div>
+          )
           : <JoinRequestFlow group={group} membership={myMembership} onChange={load} />}
       </div>
 
