@@ -77,8 +77,6 @@ export default function BrowseMatches() {
         </div>
       )}
 
-      <h1 className="mb-4 text-2xl font-semibold text-forest">Commons</h1>
-
       <div className="mb-8 flex gap-1 border-b border-forest/15">
         <Tab active={tab === 'search'} onClick={() => setTab('search')}>Search</Tab>
         <Tab active={tab === 'mine'} onClick={() => setTab('mine')}>Your groups</Tab>
