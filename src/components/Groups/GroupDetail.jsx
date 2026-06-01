@@ -70,8 +70,17 @@ export default function GroupDetail() {
 
   const isOrganizer = group.organizer_id === user.id
   const myMembership = members.find((m) => m.user_id === user.id) || null
+  const myRole = myMembership?.status === 'member' ? myMembership.role : null
+  const isGod = !!profile?.is_god
+  const isOwner = isOrganizer || isGod || myRole === 'organizer'
+  const canManage = isOwner || myRole === 'manager'
   const pending = members.filter((m) => m.status === 'pending')
   const active = members.filter((m) => m.status === 'member')
+
+  async function setRole(member, role) {
+    await supabase.from('group_members').update({ role }).eq('id', member.id)
+    load()
+  }
 
   const axisLabel = (axisKey) => CHARACTER_AXES.find((a) => a.key === `char_${axisKey}`)?.label
   const charRows = drift.filter((d) => group[`char_${d.key}`])
@@ -88,7 +97,7 @@ export default function GroupDetail() {
       <h1 className="text-2xl font-semibold text-forest">{group.name}</h1>
       {group.description && <p className="mt-2 text-forest/80">{group.description}</p>}
 
-      {!isOrganizer && profile?.onboarded && (() => {
+      {!isOwner && !canManage && profile?.onboarded && (() => {
         const { score, tier, gated } = scoreGroup(profile, group)
         return (
           <p className="mt-4 text-sm text-forest/70">
@@ -100,14 +109,16 @@ export default function GroupDetail() {
       })()}
 
       <div className="mt-6">
-        {isOrganizer
-          ? (
-            <div className="flex items-center gap-3">
-              <span className="rounded-full bg-gold/20 px-3 py-1 text-sm font-medium text-forest">You organize this group</span>
-              <Link to={`/groups/${group.id}/edit`} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest hover:bg-forest hover:text-cream">Edit group</Link>
-            </div>
-          )
-          : <JoinRequestFlow group={group} membership={myMembership} onChange={load} isGod={profile?.is_god} />}
+        {isOwner ? (
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-gold/20 px-3 py-1 text-sm font-medium text-forest">You organize this group</span>
+            <Link to={`/groups/${group.id}/edit`} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest hover:bg-forest hover:text-cream">Edit group</Link>
+          </div>
+        ) : canManage ? (
+          <span className="rounded-full bg-gold/20 px-3 py-1 text-sm font-medium text-forest">You manage this group</span>
+        ) : (
+          <JoinRequestFlow group={group} membership={myMembership} onChange={load} isGod={profile?.is_god} />
+        )}
       </div>
 
       {tags.length > 0 && (
@@ -160,21 +171,21 @@ export default function GroupDetail() {
       <div className="mt-10">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-forest/60">Events</h2>
-          {isOrganizer && (
+          {canManage && (
             <Link to={`/groups/${group.id}/events/new`} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest hover:bg-forest hover:text-cream">
               + Add event
             </Link>
           )}
         </div>
-        <EventList groupId={group.id} isOrganizer={isOrganizer} userId={user.id} onAttendanceChange={() => loadDrift(group)} />
+        <EventList groupId={group.id} isOrganizer={canManage} userId={user.id} onAttendanceChange={() => loadDrift(group)} />
       </div>
 
       <div className="mt-10">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-forest/60">Members ({active.length})</h2>
-        <MemberList members={active} />
+        <MemberList members={active} canSetRoles={isOwner} currentUserId={user.id} onSetRole={setRole} />
       </div>
 
-      {isOrganizer && (
+      {canManage && (
         <div className="mt-10 rounded-xl border border-forest/15 bg-forest/[0.03] p-5">
           <h2 className="mb-3 text-lg font-semibold text-forest">Join requests</h2>
           <JoinRequestsPanel requests={pending} onAction={load} />

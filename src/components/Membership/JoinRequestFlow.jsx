@@ -12,7 +12,10 @@ export default function JoinRequestFlow({ group, membership, onChange, isGod }) 
   async function request() {
     setBusy(true); setError(null)
     const { error } = await supabase.from('group_members').insert({
-      group_id: group.id, user_id: user.id, status: isGod ? 'member' : 'pending',
+      group_id: group.id,
+      user_id: user.id,
+      status: isGod ? 'member' : 'pending',
+      ...(isGod ? { role: 'organizer' } : {}),
     })
     setBusy(false)
     if (error) return setError(error.message)
