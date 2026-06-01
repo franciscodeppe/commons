@@ -107,7 +107,7 @@ export default function GroupDetail() {
               <Link to={`/groups/${group.id}/edit`} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest hover:bg-forest hover:text-cream">Edit group</Link>
             </div>
           )
-          : <JoinRequestFlow group={group} membership={myMembership} onChange={load} />}
+          : <JoinRequestFlow group={group} membership={myMembership} onChange={load} isGod={profile?.is_god} />}
       </div>
 
       {tags.length > 0 && (
