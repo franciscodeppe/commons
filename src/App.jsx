@@ -44,7 +44,7 @@ export default function App() {
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/" element={<Protected><BrowseMatches /></Protected>} />
           <Route path="/onboarding" element={<Protected><ProfileSetup /></Protected>} />
-          <Route path="/settings" element={<Protected><ProfileSettings /></Protected>} />
+          <Route path="/profile" element={<Protected><ProfileSettings /></Protected>} />
           <Route path="/groups/new" element={<Protected><GroupCreate /></Protected>} />
           <Route path="/groups/:id" element={<Protected><GroupDetail /></Protected>} />
           <Route path="/groups/:id/edit" element={<Protected><GroupEdit /></Protected>} />

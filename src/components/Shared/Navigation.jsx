@@ -22,7 +22,7 @@ export default function Navigation() {
           <nav className="flex items-center gap-4 text-sm">
             <Link to="/" className="text-forest/80 hover:text-forest">Browse</Link>
             <Link to="/groups/new" className="text-forest/80 hover:text-forest">Start a group</Link>
-            <Link to="/settings" className="text-forest/80 hover:text-forest">Profile</Link>
+            <Link to="/profile" className="text-forest/80 hover:text-forest">Profile</Link>
             {profile?.is_admin && (
               <Link to="/admin" className="font-medium text-gold hover:text-forest">Admin</Link>
             )}
