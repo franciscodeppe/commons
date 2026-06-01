@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { supabase } from '../../utils/supabaseClient'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
-import { rankGroups } from '../../utils/matchingLogic'
+import { rankGroups, scoreGroup } from '../../utils/matchingLogic'
 import { CATEGORIES } from '../../utils/constants'
 import Spinner from '../Shared/Spinner'
 import CategoryTiles from './CategoryTiles'
@@ -21,27 +21,52 @@ export default function BrowseMatches() {
   const { user } = useAuth()
   const { profile, loading: profileLoading } = useProfile()
   const [groups, setGroups] = useState(null)
+  const [tagsByGroup, setTagsByGroup] = useState({})
+  const [eventsByGroup, setEventsByGroup] = useState({})
+  const [memberIds, setMemberIds] = useState(new Set())
+  const [tab, setTab] = useState('search')
   const [filter, setFilter] = useState('')
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     ;(async () => {
-      const { data } = await supabase.from('groups').select('*').order('created_at', { ascending: false })
-      setGroups(data ?? [])
+      const [{ data: gs }, { data: tags }, { data: evs }, { data: mem }] = await Promise.all([
+        supabase.from('groups').select('*').order('created_at', { ascending: false }),
+        supabase.from('group_tags').select('group_id, tag'),
+        supabase.from('events').select('group_id, title, description'),
+        supabase.from('group_members').select('group_id, status').eq('user_id', user.id),
+      ])
+      const tg = {}
+      ;(tags ?? []).forEach((t) => { (tg[t.group_id] ||= []).push(t.tag) })
+      const eg = {}
+      ;(evs ?? []).forEach((e) => { (eg[e.group_id] ||= []).push(`${e.title} ${e.description ?? ''}`) })
+      setTagsByGroup(tg)
+      setEventsByGroup(eg)
+      setMemberIds(new Set((mem ?? []).filter((m) => m.status === 'member').map((m) => m.group_id)))
+      setGroups(gs ?? [])
     })()
-  }, [])
+  }, [user.id])
 
   if (groups === null || profileLoading) return <Spinner />
 
-  const owned = groups.filter((g) => g.organizer_id === user.id)
-  const others = groups.filter((g) => g.organizer_id !== user.id)
-
   const onboarded = !!profile?.onboarded
-  // Rank only groups you don't run; yours don't get a match score.
-  const ranked = onboarded
-    ? rankGroups(profile, others)
-    : others.map((g) => ({ group: g, score: null, tier: null }))
+  const owned = groups.filter((g) => g.organizer_id === user.id)
+  const joined = groups.filter((g) => g.organizer_id !== user.id && memberIds.has(g.id))
+  const discoverable = groups.filter((g) => g.organizer_id !== user.id)
 
-  const shown = filter ? ranked.filter((r) => r.group.primary_category === filter) : ranked
+  const term = query.trim().toLowerCase()
+  function matchesQuery(g) {
+    if (!term) return true
+    const hay = [g.name, g.description, g.area_name, ...(tagsByGroup[g.id] ?? []), ...(eventsByGroup[g.id] ?? [])]
+      .join(' ')
+      .toLowerCase()
+    return hay.includes(term)
+  }
+
+  const filtered = discoverable.filter((g) => (!filter || g.primary_category === filter) && matchesQuery(g))
+  const ranked = onboarded
+    ? rankGroups(profile, filtered)
+    : filtered.map((g) => ({ group: g, score: null, tier: null }))
 
   return (
     <div className="mx-auto max-w-4xl px-6 py-10">
@@ -52,43 +77,77 @@ export default function BrowseMatches() {
         </div>
       )}
 
-      <h1 className="mb-6 text-2xl font-semibold text-forest">Commons</h1>
+      <h1 className="mb-4 text-2xl font-semibold text-forest">Commons</h1>
 
-      {owned.length > 0 && (
-        <section className="mb-10">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-forest/60">Your groups</h2>
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {owned.map((g) => (
-              <GroupCard key={g.id} g={g} owned />
-            ))}
-          </ul>
-        </section>
+      <div className="mb-8 flex gap-1 border-b border-forest/15">
+        <Tab active={tab === 'search'} onClick={() => setTab('search')}>Search</Tab>
+        <Tab active={tab === 'mine'} onClick={() => setTab('mine')}>Your groups</Tab>
+      </div>
+
+      {tab === 'search' ? (
+        <>
+          <section className="mb-8">
+            <CategoryTiles active={filter} onSelect={setFilter} />
+            <div className="mt-4">
+              <input
+                type="search"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search groups and events…"
+                className="w-full rounded-lg border border-forest/20 bg-white px-4 py-2.5 outline-none focus:border-forest"
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-forest/60">
+              {onboarded ? 'Matches' : 'Groups'}
+              {(filter || term) && <span className="ml-2 font-normal text-forest/40">{ranked.length} result{ranked.length === 1 ? '' : 's'}</span>}
+            </h2>
+            <CardGrid
+              items={ranked}
+              empty={term || filter ? 'No groups match your search.' : 'No other groups yet.'}
+            />
+          </section>
+        </>
+      ) : (
+        <>
+          <section className="mb-10">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-forest/60">Groups you organize</h2>
+            {owned.length === 0 ? (
+              <p className="text-forest/60">You don’t organize any groups yet. <Link to="/groups/new" className="font-medium underline">Start one</Link>.</p>
+            ) : (
+              <ul className="grid gap-4 sm:grid-cols-2">
+                {owned.map((g) => <GroupCard key={g.id} g={g} owned />)}
+              </ul>
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-forest/60">Matched groups</h2>
+            {joined.length === 0 ? (
+              <p className="text-forest/60">You haven’t joined any groups yet — find your fit in Search.</p>
+            ) : (
+              <ul className="grid gap-4 sm:grid-cols-2">
+                {joined.map((g) => {
+                  const { score, tier } = onboarded ? scoreGroup(profile, g) : { score: null, tier: null }
+                  return <GroupCard key={g.id} g={g} score={score} tier={tier} />
+                })}
+              </ul>
+            )}
+          </section>
+        </>
       )}
-
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-forest/60">
-            {onboarded ? 'Your matches' : 'Groups near you'}
-          </h2>
-        </div>
-
-        <div className="mb-6">
-          <CategoryTiles active={filter} onSelect={setFilter} />
-        </div>
-
-        {shown.length === 0 ? (
-          <p className="text-forest/60">
-            {others.length === 0 ? 'No other groups yet.' : 'No groups in this category.'}
-          </p>
-        ) : (
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {shown.map(({ group: g, score, tier }) => (
-              <GroupCard key={g.id} g={g} score={score} tier={tier} />
-            ))}
-          </ul>
-        )}
-      </section>
     </div>
+  )
+}
+
+function CardGrid({ items, empty }) {
+  if (items.length === 0) return <p className="text-forest/60">{empty}</p>
+  return (
+    <ul className="grid gap-4 sm:grid-cols-2">
+      {items.map(({ group: g, score, tier }) => <GroupCard key={g.id} g={g} score={score} tier={tier} />)}
+    </ul>
   )
 }
 
@@ -117,3 +176,15 @@ function GroupCard({ g, score, tier, owned }) {
   )
 }
 
+function Tab({ active, onClick, children }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`-mb-px border-b-2 px-4 py-2 text-sm font-medium ${
+        active ? 'border-forest text-forest' : 'border-transparent text-forest/50 hover:text-forest'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
