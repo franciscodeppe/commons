@@ -52,10 +52,7 @@ export default function BrowseMatches() {
         </div>
       )}
 
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-forest">Commons</h1>
-        <Link to="/groups/new" className="rounded-lg bg-forest px-4 py-2 text-sm font-medium text-cream">Start a group</Link>
-      </div>
+      <h1 className="mb-6 text-2xl font-semibold text-forest">Commons</h1>
 
       {owned.length > 0 && (
         <section className="mb-10">
