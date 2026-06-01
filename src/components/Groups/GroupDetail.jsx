@@ -82,6 +82,12 @@ export default function GroupDetail() {
     load()
   }
 
+  async function removeMember(member) {
+    if (!window.confirm(`Remove ${member.display_name || 'this member'} from the group?`)) return
+    await supabase.from('group_members').delete().eq('id', member.id)
+    load()
+  }
+
   const axisLabel = (axisKey) => CHARACTER_AXES.find((a) => a.key === `char_${axisKey}`)?.label
   const charRows = drift.filter((d) => group[`char_${d.key}`])
 
@@ -182,7 +188,7 @@ export default function GroupDetail() {
 
       <div className="mt-10">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-forest/60">Members ({active.length})</h2>
-        <MemberList members={active} canSetRoles={isOwner} currentUserId={user.id} onSetRole={setRole} />
+        <MemberList members={active} isOwner={isOwner} canManage={canManage} currentUserId={user.id} onSetRole={setRole} onRemove={removeMember} />
       </div>
 
       {canManage && (
