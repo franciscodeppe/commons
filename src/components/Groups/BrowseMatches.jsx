@@ -6,6 +6,7 @@ import { useProfile } from '../../hooks/useProfile'
 import { rankGroups } from '../../utils/matchingLogic'
 import { CATEGORIES } from '../../utils/constants'
 import Spinner from '../Shared/Spinner'
+import CategoryTiles from './CategoryTiles'
 
 const CAT_LABEL = Object.fromEntries(CATEGORIES.map((c) => [c.key, c.label]))
 
@@ -74,11 +75,8 @@ export default function BrowseMatches() {
           </h2>
         </div>
 
-        <div className="mb-6 flex flex-wrap gap-2">
-          <Chip active={filter === ''} onClick={() => setFilter('')}>All</Chip>
-          {CATEGORIES.map((c) => (
-            <Chip key={c.key} active={filter === c.key} onClick={() => setFilter(c.key)}>{c.label}</Chip>
-          ))}
+        <div className="mb-6">
+          <CategoryTiles active={filter} onSelect={setFilter} />
         </div>
 
         {shown.length === 0 ? (
@@ -122,10 +120,3 @@ function GroupCard({ g, score, tier, owned }) {
   )
 }
 
-function Chip({ active, onClick, children }) {
-  return (
-    <button onClick={onClick} className={`rounded-full border px-3 py-1 text-sm ${active ? 'border-forest bg-forest text-cream' : 'border-forest/25 text-forest'}`}>
-      {children}
-    </button>
-  )
-}
