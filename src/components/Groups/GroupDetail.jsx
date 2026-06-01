@@ -55,10 +55,10 @@ export default function GroupDetail() {
     const ids = [...new Set((m ?? []).map((row) => row.user_id))]
     let names = {}
     if (ids.length) {
-      const { data: profs } = await supabase.from('member_directory').select('user_id, display_name').in('user_id', ids)
-      names = Object.fromEntries((profs ?? []).map((p) => [p.user_id, p.display_name]))
+      const { data: profs } = await supabase.from('member_directory').select('user_id, username').in('user_id', ids)
+      names = Object.fromEntries((profs ?? []).map((p) => [p.user_id, p.username]))
     }
-    setMembers((m ?? []).map((row) => ({ ...row, display_name: names[row.user_id] })))
+    setMembers((m ?? []).map((row) => ({ ...row, username: names[row.user_id] })))
     await loadDrift(g)
     setLoading(false)
   }, [id, loadDrift])
@@ -83,7 +83,7 @@ export default function GroupDetail() {
   }
 
   async function removeMember(member) {
-    if (!window.confirm(`Remove ${member.display_name || 'this member'} from the group?`)) return
+    if (!window.confirm(`Remove ${member.username || 'this member'} from the group?`)) return
     await supabase.from('group_members').delete().eq('id', member.id)
     load()
   }

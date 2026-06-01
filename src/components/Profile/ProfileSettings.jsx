@@ -12,6 +12,7 @@ export default function ProfileSettings() {
   const { profile, loading, refresh } = useProfile()
 
   const [displayName, setDisplayName] = useState('')
+  const [username, setUsername] = useState('')
   const [sorts, setSorts] = useState({})
   const [facts, setFacts] = useState({ life_stage: '', work_field: '', education: '', spend_comfort: '', bio: '' })
   const [dealbreakers, setDealbreakers] = useState([])
@@ -26,6 +27,7 @@ export default function ProfileSettings() {
     if (!profile || seeded.current) return
     seeded.current = true
     setDisplayName(profile.display_name ?? '')
+    setUsername(profile.username ?? '')
     setSorts({
       sort_taste: profile.sort_taste ?? {},
       sort_humor: profile.sort_humor ?? {},
@@ -60,6 +62,11 @@ export default function ProfileSettings() {
   async function handleSave() {
     setError(null)
     setMsg(null)
+    const handle = username.trim().toLowerCase()
+    if (!/^[a-z0-9_]{3,20}$/.test(handle)) {
+      setBusy(false)
+      return setError('Username must be 3–20 characters: lowercase letters, numbers, or underscore.')
+    }
     setBusy(true)
     const axes = deriveAxes(sorts)
     const cleanFacts = Object.fromEntries(
@@ -69,6 +76,7 @@ export default function ProfileSettings() {
       .from('profiles')
       .update({
         display_name: displayName || null,
+        username: handle,
         ...cleanFacts,
         ...sorts,
         ...axes,
@@ -76,7 +84,9 @@ export default function ProfileSettings() {
       })
       .eq('user_id', user.id)
     setBusy(false)
-    if (error) return setError(error.message)
+    if (error) {
+      return setError(/duplicate|unique/i.test(error.message) ? 'That username is taken — try another.' : error.message)
+    }
     setMsg('Saved.')
     refresh()
   }
@@ -88,14 +98,25 @@ export default function ProfileSettings() {
       <h1 className="mb-1 text-2xl font-semibold text-forest">Profile settings</h1>
       <p className="mb-8 text-forest/70">Update your answers anytime — your matches recalculate on save.</p>
 
-      <section className="mb-10">
+      <section className="mb-10 space-y-4">
         <label className="block">
-          <span className="mb-1 block text-sm font-medium text-forest">Display name</span>
+          <span className="mb-1 block text-sm font-medium text-forest">Username</span>
+          <input
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            placeholder="lowercase, 3–20 chars"
+            className="w-full rounded-lg border border-forest/20 bg-white px-3 py-2 outline-none focus:border-forest"
+          />
+          <span className="mt-1 block text-xs text-forest/50">This is your public handle — shown instead of your real name.</span>
+        </label>
+        <label className="block">
+          <span className="mb-1 block text-sm font-medium text-forest">Real name</span>
           <input
             value={displayName}
             onChange={(e) => setDisplayName(e.target.value)}
             className="w-full rounded-lg border border-forest/20 bg-white px-3 py-2 outline-none focus:border-forest"
           />
+          <span className="mt-1 block text-xs text-forest/50">Kept private — you’ll control who sees this next.</span>
         </label>
       </section>
 

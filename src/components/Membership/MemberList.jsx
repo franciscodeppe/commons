@@ -14,7 +14,7 @@ export default function MemberList({ members, isOwner, canManage, currentUserId,
         return (
           <li key={m.id} className="flex items-center justify-between gap-2 rounded-lg border border-forest/10 bg-white px-3 py-2">
             <span className="text-sm text-forest">
-              {m.display_name || 'Member'}
+              {m.username || 'member'}
               {m.role && m.role !== 'member' && (
                 <span className="ml-2 rounded-full bg-forest/10 px-2 py-0.5 text-xs font-medium text-forest">{ROLE_LABEL[m.role]}</span>
               )}

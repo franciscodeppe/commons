@@ -37,10 +37,10 @@ export default function EventCard({ event, isOrganizer, userId, onAttendanceChan
       const ids = [...new Set((rows ?? []).map((r) => r.user_id))]
       let names = {}
       if (ids.length) {
-        const { data: dir } = await supabase.from('member_directory').select('user_id, display_name').in('user_id', ids)
-        names = Object.fromEntries((dir ?? []).map((d) => [d.user_id, d.display_name]))
+        const { data: dir } = await supabase.from('member_directory').select('user_id, username').in('user_id', ids)
+        names = Object.fromEntries((dir ?? []).map((d) => [d.user_id, d.username]))
       }
-      setAttendees((rows ?? []).map((r) => ({ ...r, display_name: names[r.user_id] })))
+      setAttendees((rows ?? []).map((r) => ({ ...r, username: names[r.user_id] })))
     }
   }, [event.id, userId, isOrganizer])
 
@@ -106,7 +106,7 @@ export default function EventCard({ event, isOrganizer, userId, onAttendanceChan
               {attendees.map((a) => (
                 <li key={a.id} className="flex items-center justify-between gap-2">
                   <span className="text-sm text-forest">
-                    {a.display_name || 'Member'} <span className="text-forest/45">· {STATUS_LABEL[a.status] || a.status}</span>
+                    {a.username || 'member'} <span className="text-forest/45">· {STATUS_LABEL[a.status] || a.status}</span>
                   </span>
                   <div className="flex gap-1">
                     <button onClick={() => mark(a.id, 'attended')} disabled={busy || a.status === 'attended'} className="rounded border border-forest/30 px-2 py-0.5 text-xs text-forest disabled:opacity-40">Attended</button>

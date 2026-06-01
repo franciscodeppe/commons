@@ -98,14 +98,15 @@ async function main() {
     12,
     async (i) => {
       const name = `${rand(FIRST)} ${rand(LAST)} ${i}`
+      const username = `user${i}`
       const { data, error } = await db.auth.admin.createUser({
         email: `user${i}@${DOMAIN}`,
         password: PASSWORD,
         email_confirm: true,
-        user_metadata: { display_name: name },
+        user_metadata: { display_name: name, username },
       })
       if (error) { console.error(`  user${i}: ${error.message}`); return null }
-      return { id: data.user.id, name }
+      return { id: data.user.id, name, username }
     },
   )
   const valid = users.filter(Boolean)
@@ -116,6 +117,7 @@ async function main() {
   const profiles = valid.map((u) => ({
     user_id: u.id,
     display_name: u.name,
+    username: u.username,
     axis_energy: uniform(), axis_drinking: uniform(), axis_size: uniform(),
     axis_commitment: uniform(), axis_setting: uniform(),
     axis_worldview: rand(WORLDVIEWS),
