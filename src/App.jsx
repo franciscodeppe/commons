@@ -10,6 +10,7 @@ import ForgotPassword from './components/Auth/ForgotPassword'
 import ResetPassword from './components/Auth/ResetPassword'
 import ProfileSetup from './components/Profile/ProfileSetup'
 import ProfileSettings from './components/Profile/ProfileSettings'
+import FriendsPage from './components/Friends/FriendsPage'
 import BrowseMatches from './components/Groups/BrowseMatches'
 import GroupCreate from './components/Groups/GroupCreate'
 import GroupDetail from './components/Groups/GroupDetail'
@@ -45,6 +46,7 @@ export default function App() {
           <Route path="/" element={<Protected><BrowseMatches /></Protected>} />
           <Route path="/onboarding" element={<Protected><ProfileSetup /></Protected>} />
           <Route path="/profile" element={<Protected><ProfileSettings /></Protected>} />
+          <Route path="/friends" element={<Protected><FriendsPage /></Protected>} />
           <Route path="/groups/new" element={<Protected><GroupCreate /></Protected>} />
           <Route path="/groups/:id" element={<Protected><GroupDetail /></Protected>} />
           <Route path="/groups/:id/edit" element={<Protected><GroupEdit /></Protected>} />
