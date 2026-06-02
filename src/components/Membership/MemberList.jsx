@@ -1,9 +1,10 @@
 import { formatName } from '../../utils/names'
+import FriendButton from '../Friends/FriendButton'
 
 const ROLE_LABEL = { organizer: 'Organizer', manager: 'Manager', member: 'Member' }
 const ROLES = ['member', 'manager', 'organizer']
 
-export default function MemberList({ members, isOwner, canManage, currentUserId, onSetRole, onRemove }) {
+export default function MemberList({ members, isOwner, canManage, currentUserId, onSetRole, onRemove, friendRel, onAddFriend, onAcceptFriend }) {
   if (members.length === 0) {
     return <p className="text-sm text-forest/60">No members yet.</p>
   }
@@ -22,6 +23,13 @@ export default function MemberList({ members, isOwner, canManage, currentUserId,
               )}
             </span>
             <div className="flex items-center gap-2">
+              {!isSelf && onAddFriend && (
+                <FriendButton
+                  rel={friendRel?.[m.user_id]}
+                  onAdd={() => onAddFriend(m.user_id)}
+                  onAccept={() => onAcceptFriend(friendRel[m.user_id].row)}
+                />
+              )}
               {isOwner && !isSelf ? (
                 <select
                   value={m.role || 'member'}

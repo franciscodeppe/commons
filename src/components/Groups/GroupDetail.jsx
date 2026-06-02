@@ -27,6 +27,7 @@ export default function GroupDetail() {
   const [group, setGroup] = useState(null)
   const [tags, setTags] = useState([])
   const [members, setMembers] = useState([])
+  const [friendRel, setFriendRel] = useState({})
   const [drift, setDrift] = useState([])
   const [attendanceN, setAttendanceN] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -59,6 +60,21 @@ export default function GroupDetail() {
       username: names[row.user_id]?.username,
       realName: names[row.user_id]?.realName,
     })))
+
+    // friendship status between me and these members
+    const { data: fr } = await supabase
+      .from('friendships')
+      .select('*')
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+    const rel = {}
+    ;(fr ?? []).forEach((f) => {
+      const other = f.requester_id === user.id ? f.addressee_id : f.requester_id
+      rel[other] = f.status === 'accepted'
+        ? { kind: 'friend', row: f }
+        : { kind: f.addressee_id === user.id ? 'incoming' : 'outgoing', row: f }
+    })
+    setFriendRel(rel)
+
     await loadDrift(g)
     setLoading(false)
   }, [id, loadDrift])
@@ -85,6 +101,15 @@ export default function GroupDetail() {
   async function removeMember(member) {
     if (!window.confirm(`Remove ${member.username || 'this member'} from the group?`)) return
     await supabase.from('group_members').delete().eq('id', member.id)
+    load()
+  }
+
+  async function addFriend(id) {
+    await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: id, status: 'pending' })
+    load()
+  }
+  async function acceptFriend(row) {
+    await supabase.from('friendships').update({ status: 'accepted' }).eq('id', row.id)
     load()
   }
 
@@ -188,7 +213,7 @@ export default function GroupDetail() {
 
       <div className="mt-10">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-forest/60">Members ({active.length})</h2>
-        <MemberList members={active} isOwner={isOwner} canManage={canManage} currentUserId={user.id} onSetRole={setRole} onRemove={removeMember} />
+        <MemberList members={active} isOwner={isOwner} canManage={canManage} currentUserId={user.id} onSetRole={setRole} onRemove={removeMember} friendRel={friendRel} onAddFriend={addFriend} onAcceptFriend={acceptFriend} />
       </div>
 
       {canManage && (
