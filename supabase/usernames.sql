@@ -47,7 +47,9 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- 4. Expose username publicly via the directory (display_name still here for
 --    now; it gets gated in the real-name-privacy step).
-CREATE OR REPLACE VIEW public.member_directory AS
+-- DROP + CREATE (CREATE OR REPLACE can't reorder existing view columns).
+DROP VIEW IF EXISTS public.member_directory;
+CREATE VIEW public.member_directory AS
   SELECT user_id, username, display_name FROM public.profiles;
 REVOKE ALL ON public.member_directory FROM anon;
 GRANT SELECT ON public.member_directory TO authenticated;
