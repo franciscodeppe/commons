@@ -4,6 +4,7 @@ import { supabase } from '../../utils/supabaseClient'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
 import { scoreGroup, driftedCharacter } from '../../utils/matchingLogic'
+import { fetchNames } from '../../utils/names'
 import { CATEGORIES, CHARACTER_AXES, DEALBREAKERS } from '../../utils/constants'
 import Spinner from '../Shared/Spinner'
 import JoinRequestFlow from '../Membership/JoinRequestFlow'
@@ -51,14 +52,13 @@ export default function GroupDetail() {
     ])
     setTags(t ?? [])
 
-    // attach display names (separate fetch; no FK between members and profiles)
-    const ids = [...new Set((m ?? []).map((row) => row.user_id))]
-    let names = {}
-    if (ids.length) {
-      const { data: profs } = await supabase.from('member_directory').select('user_id, username').in('user_id', ids)
-      names = Object.fromEntries((profs ?? []).map((p) => [p.user_id, p.username]))
-    }
-    setMembers((m ?? []).map((row) => ({ ...row, username: names[row.user_id] })))
+    // resolve usernames (+ real names where permitted) for these members
+    const names = await fetchNames((m ?? []).map((row) => row.user_id))
+    setMembers((m ?? []).map((row) => ({
+      ...row,
+      username: names[row.user_id]?.username,
+      realName: names[row.user_id]?.realName,
+    })))
     await loadDrift(g)
     setLoading(false)
   }, [id, loadDrift])
