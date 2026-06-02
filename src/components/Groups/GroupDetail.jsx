@@ -4,6 +4,7 @@ import { supabase } from '../../utils/supabaseClient'
 import { useAuth } from '../../hooks/useAuth'
 import { useProfile } from '../../hooks/useProfile'
 import { scoreGroup, driftedCharacter } from '../../utils/matchingLogic'
+import { fetchNames } from '../../utils/names'
 import { CATEGORIES, CHARACTER_AXES, DEALBREAKERS } from '../../utils/constants'
 import Spinner from '../Shared/Spinner'
 import JoinRequestFlow from '../Membership/JoinRequestFlow'
@@ -26,6 +27,7 @@ export default function GroupDetail() {
   const [group, setGroup] = useState(null)
   const [tags, setTags] = useState([])
   const [members, setMembers] = useState([])
+  const [friendRel, setFriendRel] = useState({})
   const [drift, setDrift] = useState([])
   const [attendanceN, setAttendanceN] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -51,14 +53,28 @@ export default function GroupDetail() {
     ])
     setTags(t ?? [])
 
-    // attach display names (separate fetch; no FK between members and profiles)
-    const ids = [...new Set((m ?? []).map((row) => row.user_id))]
-    let names = {}
-    if (ids.length) {
-      const { data: profs } = await supabase.from('member_directory').select('user_id, display_name').in('user_id', ids)
-      names = Object.fromEntries((profs ?? []).map((p) => [p.user_id, p.display_name]))
-    }
-    setMembers((m ?? []).map((row) => ({ ...row, display_name: names[row.user_id] })))
+    // resolve usernames (+ real names where permitted) for these members
+    const names = await fetchNames((m ?? []).map((row) => row.user_id))
+    setMembers((m ?? []).map((row) => ({
+      ...row,
+      username: names[row.user_id]?.username,
+      realName: names[row.user_id]?.realName,
+    })))
+
+    // friendship status between me and these members
+    const { data: fr } = await supabase
+      .from('friendships')
+      .select('*')
+      .or(`requester_id.eq.${user.id},addressee_id.eq.${user.id}`)
+    const rel = {}
+    ;(fr ?? []).forEach((f) => {
+      const other = f.requester_id === user.id ? f.addressee_id : f.requester_id
+      rel[other] = f.status === 'accepted'
+        ? { kind: 'friend', row: f }
+        : { kind: f.addressee_id === user.id ? 'incoming' : 'outgoing', row: f }
+    })
+    setFriendRel(rel)
+
     await loadDrift(g)
     setLoading(false)
   }, [id, loadDrift])
@@ -70,8 +86,32 @@ export default function GroupDetail() {
 
   const isOrganizer = group.organizer_id === user.id
   const myMembership = members.find((m) => m.user_id === user.id) || null
+  const myRole = myMembership?.status === 'member' ? myMembership.role : null
+  const isGod = !!profile?.is_god
+  const isOwner = isOrganizer || isGod || myRole === 'organizer'
+  const canManage = isOwner || myRole === 'manager'
   const pending = members.filter((m) => m.status === 'pending')
   const active = members.filter((m) => m.status === 'member')
+
+  async function setRole(member, role) {
+    await supabase.from('group_members').update({ role }).eq('id', member.id)
+    load()
+  }
+
+  async function removeMember(member) {
+    if (!window.confirm(`Remove ${member.username || 'this member'} from the group?`)) return
+    await supabase.from('group_members').delete().eq('id', member.id)
+    load()
+  }
+
+  async function addFriend(id) {
+    await supabase.from('friendships').insert({ requester_id: user.id, addressee_id: id, status: 'pending' })
+    load()
+  }
+  async function acceptFriend(row) {
+    await supabase.from('friendships').update({ status: 'accepted' }).eq('id', row.id)
+    load()
+  }
 
   const axisLabel = (axisKey) => CHARACTER_AXES.find((a) => a.key === `char_${axisKey}`)?.label
   const charRows = drift.filter((d) => group[`char_${d.key}`])
@@ -88,7 +128,7 @@ export default function GroupDetail() {
       <h1 className="text-2xl font-semibold text-forest">{group.name}</h1>
       {group.description && <p className="mt-2 text-forest/80">{group.description}</p>}
 
-      {!isOrganizer && profile?.onboarded && (() => {
+      {!isOwner && !canManage && profile?.onboarded && (() => {
         const { score, tier, gated } = scoreGroup(profile, group)
         return (
           <p className="mt-4 text-sm text-forest/70">
@@ -100,14 +140,16 @@ export default function GroupDetail() {
       })()}
 
       <div className="mt-6">
-        {isOrganizer
-          ? (
-            <div className="flex items-center gap-3">
-              <span className="rounded-full bg-gold/20 px-3 py-1 text-sm font-medium text-forest">You organize this group</span>
-              <Link to={`/groups/${group.id}/edit`} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest hover:bg-forest hover:text-cream">Edit group</Link>
-            </div>
-          )
-          : <JoinRequestFlow group={group} membership={myMembership} onChange={load} />}
+        {isOwner ? (
+          <div className="flex items-center gap-3">
+            <span className="rounded-full bg-gold/20 px-3 py-1 text-sm font-medium text-forest">You organize this group</span>
+            <Link to={`/groups/${group.id}/edit`} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest hover:bg-forest hover:text-cream">Edit group</Link>
+          </div>
+        ) : canManage ? (
+          <span className="rounded-full bg-gold/20 px-3 py-1 text-sm font-medium text-forest">You manage this group</span>
+        ) : (
+          <JoinRequestFlow group={group} membership={myMembership} onChange={load} isGod={profile?.is_god} />
+        )}
       </div>
 
       {tags.length > 0 && (
@@ -160,21 +202,21 @@ export default function GroupDetail() {
       <div className="mt-10">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-forest/60">Events</h2>
-          {isOrganizer && (
+          {canManage && (
             <Link to={`/groups/${group.id}/events/new`} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest hover:bg-forest hover:text-cream">
               + Add event
             </Link>
           )}
         </div>
-        <EventList groupId={group.id} isOrganizer={isOrganizer} userId={user.id} onAttendanceChange={() => loadDrift(group)} />
+        <EventList groupId={group.id} isOrganizer={canManage} userId={user.id} onAttendanceChange={() => loadDrift(group)} />
       </div>
 
       <div className="mt-10">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-forest/60">Members ({active.length})</h2>
-        <MemberList members={active} />
+        <MemberList members={active} isOwner={isOwner} canManage={canManage} currentUserId={user.id} onSetRole={setRole} onRemove={removeMember} friendRel={friendRel} onAddFriend={addFriend} onAcceptFriend={acceptFriend} />
       </div>
 
-      {isOrganizer && (
+      {canManage && (
         <div className="mt-10 rounded-xl border border-forest/15 bg-forest/[0.03] p-5">
           <h2 className="mb-3 text-lg font-semibold text-forest">Join requests</h2>
           <JoinRequestsPanel requests={pending} onAction={load} />

@@ -6,6 +6,7 @@ export default function SignUp() {
   const { signUp } = useAuth()
   const navigate = useNavigate()
   const [displayName, setDisplayName] = useState('')
+  const [username, setUsername] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState(null)
@@ -14,10 +15,19 @@ export default function SignUp() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
+    const handle = username.trim().toLowerCase()
+    if (!/^[a-z0-9_]{3,20}$/.test(handle)) {
+      return setError('Username must be 3–20 characters: lowercase letters, numbers, or underscore.')
+    }
     setBusy(true)
-    const { data, error } = await signUp(email, password, displayName)
+    const { data, error } = await signUp(email, password, displayName, handle)
     setBusy(false)
-    if (error) return setError(error.message)
+    if (error) {
+      // The most common failure here is a taken username (unique violation).
+      return setError(/duplicate|unique|already/i.test(error.message)
+        ? 'That username is taken — try another.'
+        : error.message)
+    }
     // If email confirmation is OFF, a session exists immediately.
     if (data.session) navigate('/onboarding')
     else setError('Check your email to confirm your account, then log in.')
@@ -29,6 +39,7 @@ export default function SignUp() {
       <p className="mb-6 text-forest/70">Activity groups built around who you actually are.</p>
       <form onSubmit={handleSubmit} className="space-y-4">
         <Field label="Your name" value={displayName} onChange={setDisplayName} type="text" required />
+        <Field label="Username" value={username} onChange={setUsername} type="text" required />
         <Field label="Email" value={email} onChange={setEmail} type="email" required />
         <Field label="Password" value={password} onChange={setPassword} type="password" required />
         {error && <p className="text-sm text-red-700">{error}</p>}

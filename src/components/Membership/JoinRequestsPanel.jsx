@@ -20,7 +20,7 @@ export default function JoinRequestsPanel({ requests, onAction }) {
     <ul className="space-y-2">
       {requests.map((r) => (
         <li key={r.id} className="flex items-center justify-between rounded-lg border border-forest/15 bg-white px-4 py-3">
-          <span className="font-medium text-forest">{r.display_name || 'Someone'}</span>
+          <span className="font-medium text-forest">{r.realName ? `${r.username} · ${r.realName}` : (r.username || 'Someone')}</span>
           <div className="flex gap-2">
             <button onClick={() => act(r, 'member')} disabled={busyId === r.id} className="rounded-md bg-forest px-3 py-1 text-sm text-cream disabled:opacity-50">Approve</button>
             <button onClick={() => act(r, 'declined')} disabled={busyId === r.id} className="rounded-md border border-forest/30 px-3 py-1 text-sm text-forest disabled:opacity-50">Decline</button>

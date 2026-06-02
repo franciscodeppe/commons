@@ -30,11 +30,11 @@ export function AuthProvider({ children }) {
     session,
     user: session?.user ?? null,
     loading,
-    signUp: (email, password, displayName) =>
+    signUp: (email, password, displayName, username) =>
       supabase.auth.signUp({
         email,
         password,
-        options: { data: { display_name: displayName } },
+        options: { data: { display_name: displayName, username } },
       }),
     signIn: (email, password) =>
       supabase.auth.signInWithPassword({ email, password }),

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams, Navigate, Link } from 'react-router-dom'
 import { useAuth } from '../../hooks/useAuth'
+import { useProfile } from '../../hooks/useProfile'
 import { supabase } from '../../utils/supabaseClient'
 import GroupForm from './GroupForm'
 import Spinner from '../Shared/Spinner'
@@ -8,6 +9,7 @@ import Spinner from '../Shared/Spinner'
 export default function GroupEdit() {
   const { id } = useParams()
   const { user } = useAuth()
+  const { profile } = useProfile()
   const navigate = useNavigate()
   const [initial, setInitial] = useState(null)
   const [status, setStatus] = useState('loading') // loading | ready | notfound | forbidden
@@ -16,7 +18,8 @@ export default function GroupEdit() {
     ;(async () => {
       const { data: g } = await supabase.from('groups').select('*').eq('id', id).maybeSingle()
       if (!g) return setStatus('notfound')
-      if (g.organizer_id !== user.id) return setStatus('forbidden')
+      // Creator or god can edit. (RLS is the real gate — role-organizers pass too.)
+      if (g.organizer_id !== user.id && !profile?.is_god) return setStatus('forbidden')
       const { data: tagRows } = await supabase.from('group_tags').select('tag, type').eq('group_id', id)
       setInitial({
         ...g,
@@ -26,7 +29,7 @@ export default function GroupEdit() {
       })
       setStatus('ready')
     })()
-  }, [id, user.id])
+  }, [id, user.id, profile?.is_god])
 
   async function onSubmit({ fields, predefinedTags, customTags, notFor }) {
     const { error } = await supabase
